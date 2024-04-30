@@ -4,6 +4,9 @@
   - [免责声明（Disclaimer）](#免责声明disclaimer)
   - [数据存储](#数据存储)
     - [本地书仓](#本地书仓)
+  - [阅读页面地址](#阅读页面地址)
+    - [全功能web端](#全功能web端)
+    - [适配kindle的 `simple-web`](#适配kindle的-simple-web)
   - [自定义阅读主题](#自定义阅读主题)
   - [自定义样式](#自定义样式)
   - [接口服务配置](#接口服务配置)
@@ -15,8 +18,8 @@
     - [服务器版](#服务器版)
     - [Docker版](#docker版)
     - [Docker-Compose版(推荐)](#docker-compose版推荐)
-    - [脚本部署(甲骨文非Ubuntu可能不支持)](#通过脚本一键部署)
-  - [Nginx反向代理](#nginx反向代理)
+    - [通过脚本一键部署](#通过脚本一键部署)
+  - [Nginx反向代理(如果有域名可以考虑80端口复用)](#nginx反向代理如果有域名可以考虑80端口复用)
   - [开发编译](#开发编译)
     - [编译脚本](#编译脚本)
     - [编译前端](#编译前端)
@@ -89,6 +92,18 @@ storage
 
 在 `storage/localStore` 中可以集中存放管理本地书籍，开启访问权限的用户可以在 `页面-浏览书仓` 中选择批量导入到自己的书架进行阅读。
 
+## 阅读页面地址
+
+### 全功能web端
+
+`http://ip:端口/`
+
+### 适配kindle的 `simple-web`
+
+`http://ip:端口/simple-web`
+
+> 注意，需要另外购买授权才能使用，加入TG群了解详情
+
 ## 自定义阅读主题
 
 书架页面仅支持白天模式和黑夜模式。
@@ -111,25 +126,29 @@ storage
 ```yml
 reader:
   app:
-    storagePath: storage   # 数据存储目录
-    showUI: false          # 是否显示UI
-    debug: false           # 是否调试模式
-    packaged: false        # 是否打包为客户端
+    workDir: ""            # 工作目录
     secure: false          # 是否需要登录鉴权，开启后将支持多用户模式
     inviteCode: ""         # 注册邀请码，为空时则开放注册，否则注册时需要输入邀请码
     secureKey: ""          # 管理密码，开启鉴权时，前端管理用户空间的管理密码
-    proxy: false           # 是否使用代理
-    proxyType: "HTTP"      # 代理类型
-    proxyHost: ""          # 代理 Host
-    proxyPort: ""          # 代理 port
-    proxyUsername: ""      # 代理鉴权 用户名
-    proxyPassword: ""      # 代理鉴权 密码
     cacheChapterContent: false # 是否缓存章节内容
-    userLimit: 50          # 用户上限，最大 50
-    userBookLimit: 200     # 用户书籍上限，默认最大 200
+    debugLog: false        # 是否打开调试日志
+    autoClearInactiveUser: 0 # 是否自动清理不活跃用户，为0不清理，大于0为清理超过 autoClearInactiveUser 天未登录的用户
+    mongoUri: ""           # mongodb uri 用于备份数据
+    mongoDbName: "reader"  # mongodb 数据库名称
+    shelfUpdateInteval: 10 # 书架自动更新间隔时间，单位分钟，必须是10的倍数
+    userLimit: 15          # 用户上限，最大 15
+    remoteWebviewApi: ""   # remote-webview 地址
+    defaultUserEnableWebdav: true  # 新用户是否默认启用webdav
+    defaultUserEnableLocalStore: true # 新用户是否默认启用localStore
+    defaultUserEnableBookSource: true # 新用户是否默认可编辑书源，如果为false，则只能使用默认书源，不能新增/修改/删除
+    defaultUserEnableRssSource: true # 新用户是否默认可编辑RSS源
+    defaultUserBookSourceLimit: 100  # 新用户默认书源上限
+    defaultUserBookLimit: 200 # 新用户默认书籍上限
+    autoBackupUserData: false # 是否自动备份用户数据
 
   server:
     port: 8080             # 监听端口
+    contextPath: ""        # 二级目录，为空则不使用二级目录
     webUrl: http://localhost:${reader.server.port}    # web链接
 
 ```
@@ -161,7 +180,7 @@ reader:
 
 ### Windows / MacOS / Linux
 
-从 [releases](https://github.com/hectorqin/reader/releases) 下载对应平台安装包安装即可，需要安装java10以上环境
+从 [releases](https://github.com/hectorqin/reader/releases) 下载对应平台安装包安装即可，需要安装java8及以上环境
 
 MacOS 版 `storage` 默认是 `用户目录/.reader/storage`，其它版本 `storage` 默认是 `程序目录/storage`
 
@@ -202,25 +221,27 @@ MacOS 版 `storage` 默认是 `用户目录/.reader/storage`，其它版本 `sto
 
 ### 服务器版
 
-从 [releases](https://github.com/hectorqin/reader/releases) 下载 `reader-$version.jar` 运行即可，需要安装java10以上环境
+从 [releases](https://github.com/hectorqin/reader/releases) 下载 `reader-server-$version.zip` 解压后运行即可，需要安装java8及以上环境
 
 ```bash
-# 创建目录
-mkdir reader3
-cd reader3
-
-# 下载 jar
-wget "xxxx"
-
 # 安装jdk10以上环境...
 
+# 解压文件
+unzip reader-server-$version.zip
+
 # 运行
+cd reader-server-$version
 
-# 自用版
-java -jar reader-$version.jar
+./bin/startup.sh
+# windows 上直接点击 bin/startup.cmd 文件
 
-# 多用户版
-java -jar reader-$version.jar --reader.app.secure=true --reader.app.secureKey=管理密码 --reader.app.inviteCode=注册邀请码
+# startup 脚本支持以下选项，这些选项如果使用命令行参数修改，则会覆盖配置文件的设置
+# -m single|multi 选择单用户/多用户模式，默认 以配置文件 conf/application.properties 为准
+# -s reader-xx 选择 jar 文件名(不含.jar后缀)，默认使用target目录里最新的jar
+# -i inviteCode 设置多用户模式下的邀请码，默认 以配置文件 conf/application.properties 为准
+# -k secureKey 设置多用户模式下的管理密码，默认 以配置文件 conf/application.properties 为准
+
+# 注意！！！startup 脚本在单用户模式下 默认占用 256m 内存，在多用户模式下 默认占用 1g 内存，如果内存不够，请自行修改脚本
 
 # web端 http://localhost:8080/
 # 接口地址 http://localhost:8080/reader3/
@@ -289,7 +310,7 @@ curl -fsSL https://get.docker.com | bash -s docker #国外服务器
 curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun #国内服务器
 
 # 下载项目里的 docker-compose.yaml
-wget https://ghproxy.com/https://raw.githubusercontent.com/hectorqin/reader/master/docker-compose.yaml
+wget https://mirror.ghproxy.com/https://raw.githubusercontent.com/hectorqin/reader/master/docker-compose.yaml
 # 根据 docker-compose.yaml 里面的注释编辑所需配置
 vim docker-compose.yaml
 # 保存
@@ -305,7 +326,7 @@ docker-compose stop
 docker logs -f reader
 
 # 自行导入远程书源(打开链接后复制网址导入即可)
-https://legado.pages.dev
+https://legado.aoaostar.com/
 
 # 手动更新
 docker-compose pull && docker-compose up -d
@@ -315,11 +336,11 @@ docker-compose pull && docker-compose up -d
 
 ```shell
 # 此脚本对甲骨文非Ubuntu系统,CentOS9可能不兼容。建议网上手动搜索
-#curl 
-bash <(curl -L -s https://ghproxy.com/https://raw.githubusercontent.com/hectorqin/reader/master/reader.sh)
+#curl
+bash <(curl -L -s https://mirror.ghproxy.com/https://raw.githubusercontent.com/hectorqin/reader/master/reader.sh)
 
-#wget 
-bash <(wget -qO- --no-check-certificate https://ghproxy.com/https://raw.githubusercontent.com/hectorqin/reader/master/reader.sh)
+#wget
+bash <(wget -qO- --no-check-certificate https://mirror.ghproxy.com/https://raw.githubusercontent.com/hectorqin/reader/master/reader.sh)
 
 ```
 
